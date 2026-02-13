@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/eyedeekay/go-unzip/pkg/unzip"
+	"github.com/go-i2p/go-unzip/pkg/unzip"
 )
 
 func main() {

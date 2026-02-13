@@ -5,7 +5,7 @@ Package go-unzip provides a very simple library to extract zip archive
 
 ## Installation
 ```shell
-go get -u github.com/artdarek/go-unzip
+go get -u github.com/go-i2p/go-unzip
 ```
 
 ## Examples
@@ -16,7 +16,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/artdarek/go-unzip/pkg/unzip"
+	"github.com/go-i2p/go-unzip/pkg/unzip"
 )
 
 func main() {

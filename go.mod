@@ -1,3 +1,3 @@
-module github.com/eyedeekay/go-unzip
+module github.com/go-i2p/go-unzip
 
-go 1.18
+go 1.24.4
