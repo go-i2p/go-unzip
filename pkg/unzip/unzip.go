@@ -32,15 +32,15 @@ func New() *Unzip {
 	return &Unzip{}
 }
 
-func (uz Unzip) Extract(source, destination string) ([]string, error) {
+func (uz Unzip) Extract(source, destination string) (filenames []string, retErr error) {
 	r, err := zip.OpenReader(source)
 	if err != nil {
 		return nil, err
 	}
 
 	defer func() {
-		if err := r.Close(); err != nil {
-			panic(err)
+		if cerr := r.Close(); cerr != nil && retErr == nil {
+			retErr = cerr
 		}
 	}()
 
@@ -67,14 +67,14 @@ func (uz Unzip) Extract(source, destination string) ([]string, error) {
 	return extractedFiles, nil
 }
 
-func (uz Unzip) extractAndWriteFile(destination string, f *zip.File) (int64, error) {
+func (uz Unzip) extractAndWriteFile(destination string, f *zip.File) (written int64, retErr error) {
 	rc, err := f.Open()
 	if err != nil {
 		return 0, err
 	}
 	defer func() {
-		if err := rc.Close(); err != nil {
-			panic(err)
+		if cerr := rc.Close(); cerr != nil && retErr == nil {
+			retErr = cerr
 		}
 	}()
 
@@ -107,8 +107,8 @@ func (uz Unzip) extractAndWriteFile(destination string, f *zip.File) (int64, err
 		return 0, err
 	}
 	defer func() {
-		if err := outFile.Close(); err != nil {
-			panic(err)
+		if cerr := outFile.Close(); cerr != nil && retErr == nil {
+			retErr = cerr
 		}
 	}()
 

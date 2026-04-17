@@ -3,6 +3,7 @@ package unzip
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"os"
 	"path/filepath"
@@ -240,4 +241,47 @@ func TestExtract_ZipBomb_HighCompressionRatio(t *testing.T) {
 	if outInfo.Size() > 256*1024 {
 		t.Fatalf("zip bomb protection failed: output file is %d bytes, expected ≤%d", outInfo.Size(), 256*1024)
 	}
+}
+
+func TestExtract_CloseError_NoPanic(t *testing.T) {
+	// Build a valid zip and then corrupt the DEFLATE stream so that the
+	// decompressor surfaces an error when the entry reader is closed
+	// (Go's archive/zip verifies the CRC-32 on Close).  Before the fix
+	// this triggered a panic; now it must return an error.
+
+	tmpDir := t.TempDir()
+	zipPath := filepath.Join(tmpDir, "bad.zip")
+
+	// Step 1: create a legitimate zip with one compressed entry.
+	content := bytes.Repeat([]byte("A"), 4096) // easily compressible
+	createZipWithEntry(t, zipPath, "entry.bin", content)
+
+	// Step 2: tamper with the stored CRC-32 in the central directory header
+	// so that archive/zip detects a checksum mismatch on Close().
+	data, err := os.ReadFile(zipPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Central directory header signature is PK\x01\x02; CRC-32 is at
+	// offset 16 from it.
+	sig := []byte{0x50, 0x4b, 0x01, 0x02}
+	idx := bytes.Index(data, sig)
+	if idx < 0 {
+		t.Fatal("could not find central directory header signature")
+	}
+	crcOff := idx + 16
+	origCRC := binary.LittleEndian.Uint32(data[crcOff : crcOff+4])
+	binary.LittleEndian.PutUint32(data[crcOff:crcOff+4], origCRC^0xDEADBEEF)
+	if err := os.WriteFile(zipPath, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Step 3: extract — must return an error, NOT panic.
+	uz := New()
+	dest := filepath.Join(tmpDir, "out")
+	_, err = uz.Extract(zipPath, dest)
+	if err == nil {
+		t.Fatal("expected error from corrupted zip entry close, got nil")
+	}
+	t.Logf("got expected error: %v", err)
 }
